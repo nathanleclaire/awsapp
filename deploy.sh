@@ -109,15 +109,19 @@ case $1 in
     reload-haproxy)
         push_haproxy_image
         docker hosts active ${DOCKER_HOST_NAME}
+        docker pull ${HAPROXY_IMAGE}
         docker stop ${HAPROXY_CONTAINER}
         docker rm ${HAPROXY_CONTAINER}
         docker run -d  \
             --net host \
             --name ${HAPROXY_CONTAINER} \
             ${HAPROXY_IMAGE}
+        docker hosts active default
         ;;
     rollback)
+        docker hosts active ${DOCKER_HOST_NAME}
         run_app_containers_from_image $2
+        docker hosts active default
         ;;
     *)
         echo "Usage: deploy.sh [up|down|deploy]"
