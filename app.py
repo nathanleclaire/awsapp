@@ -4,8 +4,12 @@ import os
 app = Flask(__name__)
 redis = Redis(host='redis', port=6379)
 
+@app.route('/health-check')
+def health_check():
+    return 'Server is responding and well!'
+
 @app.route('/')
-def hello():
+def index():
     redis.incr('hits')
     return render_template('index.html', hits=redis.get('hits'))
 

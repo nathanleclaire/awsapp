@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 DOCKER_HOST_NAME="aws_lightning_fast"
 DOCKER_HUB_USER="nathanleclaire"
 APP_IMAGE="awsapp"
@@ -25,7 +27,7 @@ run_app_containers_from_image () {
         -p 8002:5000 \
         --link redis:redis \
         --name ${APP_CONTAINER}_backup \
-        ${TAGGED_IMAGE}
+        $1
 
     # ...then restart main
     docker stop ${APP_CONTAINER} &>/dev/null || true
@@ -34,7 +36,7 @@ run_app_containers_from_image () {
         -p 8001:5000 \
         --link redis:redis \
         --name ${APP_CONTAINER} \
-        ${TAGGED_IMAGE}
+        $1
 }
 
 push_tagged_image () {
@@ -55,12 +57,14 @@ push_haproxy_image () {
 
 case $1 in 
     up)
+        set +e
         # check if host exists
         docker hosts inspect ${DOCKER_HOST_NAME} >/dev/null
         if [[ $? -eq 0 ]]; then
             echo "Host already exists, exiting."
             exit 0
         fi 
+        set -e
 
         push_haproxy_image
         push_tagged_image
@@ -78,13 +82,12 @@ case $1 in
             --name redis \
             redis
 
-        run_app_containers_from_image
+        run_app_containers_from_image ${TAGGED_IMAGE}
         ;;
     down)
         docker hosts rm ${DOCKER_HOST_NAME}
         ;;
     deploy)
-        set -e
         docker hosts active default
 
         # (DOCKER ON LAPTOP)
@@ -95,13 +98,26 @@ case $1 in
         docker hosts active ${DOCKER_HOST_NAME}
         docker pull ${TAGGED_IMAGE}
 
-        run_app_containers_from_image
+        run_app_containers_from_image ${TAGGED_IMAGE}
 
         # go back to using local docker
         docker hosts active default
 
         print_deployed_msg
         echo "Access at " $(docker hosts ip ${DOCKER_HOST_NAME})
+        ;;
+    reload-haproxy)
+        push_haproxy_image
+        docker hosts active ${DOCKER_HOST_NAME}
+        docker stop ${HAPROXY_CONTAINER}
+        docker rm ${HAPROXY_CONTAINER}
+        docker run -d  \
+            --net host \
+            --name ${HAPROXY_CONTAINER} \
+            ${HAPROXY_IMAGE}
+        ;;
+    rollback)
+        run_app_containers_from_image $2
         ;;
     *)
         echo "Usage: deploy.sh [up|down|deploy]"
