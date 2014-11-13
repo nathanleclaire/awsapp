@@ -31,5 +31,5 @@ def index():
     return render_template('index.html', hits=redis.get('hits'))
 
 if __name__ == '__main__':
-     health_on()
+    health_on()
     app.run(host='0.0.0.0')
