@@ -6,7 +6,7 @@ app for aws:reinvent demo
 Requirements
 ============
 
-To run the app you will need to compile Docker from source using the `aws-driver` branch on this repo (so that you will have access to the `docker hosts` command).  Make sure it is in your `$PATH` as `docker`.  Also make sure to set your AWS account credentials the correct way in environment variables.
+To run the app you will need to compile Docker from source using the `aws-driver` branch on [nathanleclaire/docker](http://github.com/nathanleclaire/docker) (so that you will have access to the `docker hosts` command).  Make sure it is in your `$PATH` as `docker`.  Also make sure to set your AWS account credentials the correct way in environment variables.
 
 Usage
 =====
