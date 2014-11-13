@@ -19,24 +19,44 @@ print_deployed_msg () {
     cat ${MESSAGE_FILENAME}
 }
 
-run_app_containers_from_image () {
-    # take down backup container when main is still running...
-    docker stop ${APP_CONTAINER}_backup &>/dev/null || true
-    docker rm ${APP_CONTAINER}_backup &>/dev/null || true
-    docker run -d \
-        -p 8002:5000 \
-        --link redis:redis \
-        --name ${APP_CONTAINER}_backup \
-        $1
+set_health () {
+    # why || true?
+    # because when we run for the first time our app
+    # containers will not exist yet.
+    # this would cause an error (non-0 exit code) 
+    # which would stop the script due to set -e.
+    docker run -it \
+        --net host \
+        nathanleclaire/curl \
+        curl "localhost:$1/health/$2" &>/dev/null || true
 
-    # ...then restart main
-    docker stop ${APP_CONTAINER} &>/dev/null || true
-    docker rm ${APP_CONTAINER} &>/dev/null || true
-    docker run -d \
-        -p 8001:5000 \
-        --link redis:redis \
-        --name ${APP_CONTAINER} \
-        $1
+    # give haproxy a second to catch up
+    # health check is done in 100ms intervals so this is 
+    # a decent amount of "catch-up" time
+    sleep 1
+}
+
+run_app_containers_from_image () {
+    for i in {0..1}; do
+        PORT=800${i}
+        # take down backup container when main is still running...
+        set_health $PORT off
+
+        # same reason for || true here as listed above.
+        # these containers don't exist first time we run this.
+        docker stop ${APP_CONTAINER}_${i} &>/dev/null || true
+        docker rm ${APP_CONTAINER}_${i} &>/dev/null || true
+
+        docker run -d \
+            -e SRV_NAME=s${i} \
+            -p ${PORT}:5000 \
+            --link redis:redis \
+            --name ${APP_CONTAINER}_${i} \
+            $1
+
+        # give app a second to come back up
+        sleep 1
+    done
 }
 
 push_tagged_image () {
@@ -70,7 +90,7 @@ case $1 in
         push_tagged_image
 
         # make new ec2 host since one doesn't exit yet
-        docker hosts create --driver ec2 --no-install ${DOCKER_HOST_NAME}
+        docker hosts create --driver ec2 ${DOCKER_HOST_NAME}
 
         docker run -d  \
             --net host \
@@ -120,7 +140,7 @@ case $1 in
         ;;
     rollback)
         docker hosts active ${DOCKER_HOST_NAME}
-        run_app_containers_from_image $2
+        run_app_containers_from_image ${REMOTE_IMAGE}:$2
         docker hosts active default
         ;;
     *)
