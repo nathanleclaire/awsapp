@@ -1,3 +1,6 @@
+__TAKE NOTE__: This demo currently relies on the `docker hosts` functionality and concept, which for a variety of reasons is now a totally separate tool called `machine`.  The `machine` repo is at https://github.com/docker/machine and I intend to port this demo over at some point, but I haven't yet.  The concepts are essentially the same (i.e. how to do a rolling deploy using `hosts` / `machine` and Docker) if you want to take a stab at your own, but it will take a little bit of time before this particular repo can be used out of the box.
+
+
 awsapp
 ======
 
