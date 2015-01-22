@@ -34,7 +34,7 @@ set_health () {
     # this would cause an error (non-0 exit code) 
     # which would stop the script due to set -e.
     docker \
-        $(cfg)
+        $(cfg) \
         run -it \
         --net host \
         nathanleclaire/curl \
