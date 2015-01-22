@@ -3,7 +3,10 @@
 set -e
 
 DOCKER_HOST_NAME="awslightningfast"
-DOCKER_HUB_USER="nathanleclaire"
+
+if [[ ! -z "$DOCKER_HUB_USER" ]]; then
+    DOCKER_HUB_USER="nathanleclaire"
+fi
 APP_IMAGE="awsapp"
 REMOTE_IMAGE=${DOCKER_HUB_USER}/${APP_IMAGE}
 IMAGE_TAG=$(date | sed 's/ /_/g' | sed 's/:/_/g')
@@ -20,7 +23,9 @@ print_deployed_msg () {
 }
 
 set_host_default () {
-    $(boot2docker shellinit)
+    if [[ ! -e /var/run/docker.sock ]]; then
+        $(boot2docker shellinit)
+    fi
 }
 
 cfg () {
