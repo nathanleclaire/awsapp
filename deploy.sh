@@ -2,7 +2,7 @@
 
 set -e
 
-DOCKER_HOST_NAME="aws_lightning_fast"
+DOCKER_HOST_NAME="awslightningfast"
 DOCKER_HUB_USER="nathanleclaire"
 APP_IMAGE="awsapp"
 REMOTE_IMAGE=${DOCKER_HUB_USER}/${APP_IMAGE}
@@ -19,13 +19,23 @@ print_deployed_msg () {
     cat ${MESSAGE_FILENAME}
 }
 
+set_host_default () {
+    $(boot2docker shellinit)
+}
+
+cfg () {
+    echo $(machine config ${DOCKER_HOST_NAME})
+}
+
 set_health () {
     # why || true?
     # because when we run for the first time our app
     # containers will not exist yet.
     # this would cause an error (non-0 exit code) 
     # which would stop the script due to set -e.
-    docker run -it \
+    docker \
+        $(cfg)
+        run -it \
         --net host \
         nathanleclaire/curl \
         curl "localhost:$1/health/$2" &>/dev/null || true
@@ -44,10 +54,11 @@ run_app_containers_from_image () {
 
         # same reason for || true here as listed above.
         # these containers don't exist first time we run this.
-        docker stop ${APP_CONTAINER}_${i} &>/dev/null || true
-        docker rm ${APP_CONTAINER}_${i} &>/dev/null || true
+        docker $(cfg) stop ${APP_CONTAINER}_${i} &>/dev/null || true
+        docker $(cfg) rm ${APP_CONTAINER}_${i} &>/dev/null || true
 
-        docker run -d \
+        docker $(cfg) \
+            run -d \
             -e SRV_NAME=s${i} \
             -p ${PORT}:5000 \
             --link redis:redis \
@@ -79,7 +90,7 @@ case $1 in
     up)
         set +e
         # check if host exists
-        docker hosts inspect ${DOCKER_HOST_NAME} >/dev/null
+        machine inspect ${DOCKER_HOST_NAME} >/dev/null
         if [[ $? -eq 0 ]]; then
             echo "Host already exists, exiting."
             exit 0
@@ -90,45 +101,46 @@ case $1 in
         push_tagged_image
 
         # make new ec2 host since one doesn't exit yet
-        docker hosts create --driver ec2 ${DOCKER_HOST_NAME}
+        machine create --driver amazonec2 ${DOCKER_HOST_NAME}
 
-        docker run -d  \
+        docker $(cfg) \
+            run -d  \
             --net host \
             --name ${HAPROXY_CONTAINER} \
             ${HAPROXY_IMAGE}
 
         # start "database"
-        docker run -d \
+        docker $(cfg) \
+            run -d \
             --name redis \
             redis
 
         run_app_containers_from_image ${TAGGED_IMAGE}
         ;;
     down)
-        docker hosts rm ${DOCKER_HOST_NAME}
+        machine rm ${DOCKER_HOST_NAME}
         ;;
     deploy)
-        docker hosts active default
+        set_host_default
 
         # (DOCKER ON LAPTOP)
         # tag image with current timestamp for easy rollback
         push_tagged_image
 
         # (DOCKER ON SERVER)
-        docker hosts active ${DOCKER_HOST_NAME}
+        machine active ${DOCKER_HOST_NAME}
         docker pull ${TAGGED_IMAGE}
 
         run_app_containers_from_image ${TAGGED_IMAGE}
 
-        # go back to using local docker
-        docker hosts active default
+        set_host_default
 
         print_deployed_msg
-        echo "Access at " $(docker hosts ip ${DOCKER_HOST_NAME})
+        echo "Access at " $(machine ip ${DOCKER_HOST_NAME})
         ;;
     reload-haproxy)
         push_haproxy_image
-        docker hosts active ${DOCKER_HOST_NAME}
+        machine active ${DOCKER_HOST_NAME}
         docker pull ${HAPROXY_IMAGE}
         docker stop ${HAPROXY_CONTAINER}
         docker rm ${HAPROXY_CONTAINER}
@@ -136,12 +148,12 @@ case $1 in
             --net host \
             --name ${HAPROXY_CONTAINER} \
             ${HAPROXY_IMAGE}
-        docker hosts active default
+        set_host_default
         ;;
     rollback)
-        docker hosts active ${DOCKER_HOST_NAME}
+        machine active ${DOCKER_HOST_NAME}
         run_app_containers_from_image ${REMOTE_IMAGE}:$2
-        docker hosts active default
+        set_host_default
         ;;
     *)
         echo "Usage: deploy.sh [up|down|deploy]"
