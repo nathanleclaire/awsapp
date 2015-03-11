@@ -13,7 +13,7 @@ as the Bourne again shell.
 # Requirements
 
 - Working copy of Docker.
-- [Docker Machine](https://github.com/docker/machine) installed as `machine` command on your system.
+- [Docker Machine](https://github.com/docker/machine) installed as `docker-machine` command on your system.
 
 Set the following environment variables:
 
