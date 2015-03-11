@@ -24,7 +24,7 @@ print_deployed_msg () {
 
 set_host_default () {
     if [[ ! -e /var/run/docker.sock ]]; then
-        $(boot2docker shellinit)
+        $(docker-machine env $(docker-machine active))
     fi
 }
 
