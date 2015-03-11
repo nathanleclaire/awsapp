@@ -4,7 +4,7 @@ set -e
 
 DOCKER_HOST_NAME="awslightningfast"
 
-if [[ ! -z "$DOCKER_HUB_USER" ]]; then
+if [[ -z "$DOCKER_HUB_USER" ]]; then
     DOCKER_HUB_USER="nathanleclaire"
 fi
 APP_IMAGE="awsapp"
