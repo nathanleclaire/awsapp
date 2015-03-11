@@ -29,7 +29,7 @@ set_host_default () {
 }
 
 cfg () {
-    echo $(machine config ${DOCKER_HOST_NAME})
+    echo $(docker-machine config ${DOCKER_HOST_NAME})
 }
 
 set_health () {
@@ -95,7 +95,7 @@ case $1 in
     up)
         set +e
         # check if host exists
-        machine inspect ${DOCKER_HOST_NAME} >/dev/null
+        docker-machine inspect ${DOCKER_HOST_NAME} >/dev/null
         if [[ $? -eq 0 ]]; then
             echo "Host already exists, exiting."
             exit 0
@@ -106,7 +106,7 @@ case $1 in
         push_tagged_image
 
         # make new ec2 host since one doesn't exit yet
-        machine create --driver amazonec2 ${DOCKER_HOST_NAME}
+        docker-machine create --driver amazonec2 ${DOCKER_HOST_NAME}
 
         docker $(cfg) \
             run -d  \
@@ -123,7 +123,7 @@ case $1 in
         run_app_containers_from_image ${TAGGED_IMAGE}
         ;;
     down)
-        machine rm ${DOCKER_HOST_NAME}
+        docker-machine rm ${DOCKER_HOST_NAME}
         ;;
     deploy)
         set_host_default
@@ -133,7 +133,7 @@ case $1 in
         push_tagged_image
 
         # (DOCKER ON SERVER)
-        machine active ${DOCKER_HOST_NAME}
+        docker-machine active ${DOCKER_HOST_NAME}
         docker pull ${TAGGED_IMAGE}
 
         run_app_containers_from_image ${TAGGED_IMAGE}
@@ -141,11 +141,11 @@ case $1 in
         set_host_default
 
         print_deployed_msg
-        echo "Access at " $(machine ip ${DOCKER_HOST_NAME})
+        echo "Access at " $(docker-machine ip ${DOCKER_HOST_NAME})
         ;;
     reload-haproxy)
         push_haproxy_image
-        machine active ${DOCKER_HOST_NAME}
+        docker-machine active ${DOCKER_HOST_NAME}
         docker pull ${HAPROXY_IMAGE}
         docker stop ${HAPROXY_CONTAINER}
         docker rm ${HAPROXY_CONTAINER}
@@ -156,7 +156,7 @@ case $1 in
         set_host_default
         ;;
     rollback)
-        machine active ${DOCKER_HOST_NAME}
+        docker-machine active ${DOCKER_HOST_NAME}
         run_app_containers_from_image ${REMOTE_IMAGE}:$2
         set_host_default
         ;;
